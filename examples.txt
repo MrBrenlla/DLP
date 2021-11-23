@@ -18,8 +18,6 @@ let fix = lambda f.(lambda x. f (lambda y. x x y)) (lambda x. f (lambda y. x x y
 let fix = lambda f.(lambda x. f (lambda y. x x y)) (lambda x. f (lambda y. x x y)) in let sumaux = lambda f. (lambda n. (lambda m. if (iszero n) then m else succ (f (pred n) m))) in let sum = fix sumaux in let prodaux = lambda f. (lambda n. (lambda m. if (iszero (pred n)) then m else sum (f (pred n) m) m)) in let prod = fix prodaux in prod 12 5
 
 
-letrec sum : Nat -> Nat -> Nat = lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m) in sum 21 34
+letrec sum : Nat -> Nat -> Nat = lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m) in sum 21 34;;
 
-letrec zero : Nat -> Nat = lambda n : Nat. if iszero n then n else (zero (pred n)) in zero 3;;
-
-letrec zero : Nat = 0 in zero ;;
+letrec zero : Nat -> Nat = lambda n : Nat. if iszero n then n else (zero (pred n)) in zero 100;;

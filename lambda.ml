@@ -26,26 +26,15 @@ type term =
   | TmAbs of string * ty * term
   | TmApp of term * term
   | TmLetIn of string * term * term
-  | TmLetRecIn of string * ty * term * term
+  | TmFix of term
 ;;
 
+type variable =
+      VarAsignation of string * term
+    | VarValue of term
+    ;;
 
 (* CONTEXT MANAGEMENT *)
-let fix= function TyArr(t1,t2) ->
-  let t=TyArr(t1,t2) in
-  TmAbs("f",TyArr(t,t),TmApp(TmAbs("x",t,TmApp(TmVar("f"),TmAbs("y",t1,TmApp(TmVar("x"),TmApp(TmVar("x"),TmVar("y")))))),TmAbs("x",t,TmApp(TmVar("f"),TmAbs("y",t1,TmApp(TmVar("x"),TmApp(TmVar("x"),TmVar("y"))))))))
-(*lambda f.(               lambda x.          f (       lambda y.           x                x                y)) (     lambda x.        f (         lambda y.                x                x          y))
-*)
-  |_-> raise (Type_error ("Expected function"))
-;;
-
-let fix2= function t ->
-  let app=TmAbs("x",t,TmApp(TmVar("f"),TmApp(TmVar("x"),TmVar("x")))) in
-  TmAbs("f",TyArr(t,t),TmApp(app,app))
-(*lambda f.(               lambda x.                   f            x                x) (     lambda x.        f             x                x      )
-*)
-  |_-> raise (Type_error ("Expected function"))
-;;
 
 let emptyctx =
   []
@@ -139,9 +128,13 @@ let rec typeof ctx tm = match tm with
       let ctx' = addbinding ctx x tyT1 in
       typeof ctx' t2
 
-  | TmLetRecIn (x, tyT1,_, t2) ->
-      let ctx' = addbinding ctx x tyT1 in
-      typeof ctx' t2
+  | TmFix t1 ->
+    let tyT1 = typeof ctx t1 in
+      match tyT1 with
+        TyArr (tyT11, tyT12) ->
+          if tyT11 = tyT12 then tyT12
+          else raise (Type_error "result of body not compatible with domain")
+       | _ -> raise (Type_error "arrow type expected")
 ;;
 
 
@@ -176,8 +169,8 @@ let rec string_of_term = function
       "(" ^ string_of_term t1 ^ " " ^ string_of_term t2 ^ ")"
   | TmLetIn (s, t1, t2) ->
       "let " ^ s ^ " = " ^ string_of_term t1 ^ " in " ^ string_of_term t2
-  | TmLetRecIn (s,tipo, t1, t2) ->
-      "letRec " ^ s ^ ":" ^ (string_of_ty tipo) ^ " = " ^ string_of_term t1 ^ " in " ^ string_of_term t2
+  | TmFix t->
+      "(fix"^ string_of_term t ^ ")"
 ;;
 
 let rec ldif l1 l2 = match l1 with
@@ -213,8 +206,8 @@ let rec free_vars tm = match tm with
       lunion (free_vars t1) (free_vars t2)
   | TmLetIn (s, t1, t2) ->
       lunion (ldif (free_vars t2) [s]) (free_vars t1)
-  | TmLetRecIn (s, _, t1, t2) ->
-       ldif  (lunion(free_vars t2) (free_vars t1)) [s]
+  | TmFix t ->
+      free_vars t
 ;;
 
 let rec fresh_name x l =
@@ -254,13 +247,8 @@ let rec subst x s tm = match tm with
            then TmLetIn (y, subst x s t1, subst x s t2)
            else let z = fresh_name y (free_vars t2 @ fvs) in
                 TmLetIn (z, subst x s t1, subst x s (subst y (TmVar z) t2))
-  | TmLetRecIn (y, tipo, t1, t2) ->
-      if y = x then TmLetRecIn (y, tipo, subst x s t1, t2)
-      else let fvs = free_vars s in
-           if not (List.mem y fvs)
-           then TmLetRecIn (y,tipo, subst x s t1, subst x s t2)
-           else let z = fresh_name y (free_vars t2 @ fvs) in
-                TmLetRecIn (z, tipo, subst x s t1, subst x s (subst y (TmVar z) t2))
+  | TmFix t ->
+      TmFix (subst x s t)
 ;;
 
 let rec isnumericval tm = match tm with
@@ -348,10 +336,14 @@ let rec eval1 tm = match tm with
       let t1' = eval1 t1 in
       TmLetIn (x, t1', t2)
 
-  |TmLetRecIn(x, tipo, t1, t2)->
-      let newname= fresh_name "f" (free_vars t1) in
-      let t1' =  TmAbs(newname,tipo,subst x (TmVar(newname)) t1) in
-      subst x (TmApp(fix tipo,t1')) t2
+    (*E-FixBeta*)
+  | TmFix (TmAbs(x,_,t12))->
+      subst x tm t12
+
+    (*E-Fix*)
+  |TmFix t1->
+      let t1'= eval1 t1 in
+      TmFix t1'
 
   | _ ->
       raise NoRuleApplies

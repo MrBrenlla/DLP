@@ -21,8 +21,14 @@ type term =
   | TmAbs of string * ty * term
   | TmApp of term * term
   | TmLetIn of string * term * term
-  | TmLetRecIn of string * ty * term * term
+  | TmFix of term
 ;;
+
+type variable =
+      VarAsignation of string * term
+    | VarValue of term
+    ;;
+
 
 val emptyctx : context;;
 val addbinding : context -> string -> ty -> context;;

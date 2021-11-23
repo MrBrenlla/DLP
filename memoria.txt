@@ -1,0 +1,71 @@
+MEMORY OF DLP PRACTICE 2021-2022
+
+	Alejandro Mayorga Redondo
+	Brais Garcia Brenlla
+
+The purpose of this memory is to recopilate all the changes and features applied to the originally given code of evaluation of lambda-calculus. The scheme of this memory will be represented as it follows:
+
+
+	-For each change applied, we will represent it as a point, in which we will talk about:
+
+
+
+		a) The objective of the modification/agregation of the code for reach our objective
+
+		b) The modifications applied, as well as a brief explanantion about why it was made that way
+
+		c) Specific examples about the functioning of the code before and after the implementations
+
+
+Point 1): Improvements in writting and lecturing of Lambda-calculus: Recognition of multi-line expressions
+
+
+	a) Our main goal is the modification of the lecturing method of our code, in a way it will be able to read not just the firts line of what we introduce, but to recognize all the arguments given
+     until we reach a certain point, delimited by an special character (we will use two ";;"). This will help us to not to be restricted to a one-line writting, but to be able to scatter the lines
+     in different rows, facilitating its disposition and lecture.
+
+
+  b) For this purpose, we will modify our main.ml file, in such a way it will only stop reading when it detects the special set of characters ";;". This is obtained through the impementation of a new function
+     called "read", that works as it follows:
+
+
+let rec read ()=
+               let rec auxread = function
+                 h::(""::_)-> h
+                 | h::[]-> h ^ " " ^ read()
+                 | h::t->h ^ (auxread t)
+                 | [] -> read()
+               in
+               auxread (String.split_on_char ';' (read_line () ) )
+
+
+      As we can see, it is applied to what we got in the split_on_char function to the readed introducted line, in such a way that it will proccess the command until it detects a void string (that will
+      mark the split of the char, with tell us that there were a ;; there and we must stop) or it doesn have anything more to process. In this second case, the auxred function will sumon the read function again with
+      the next reading line, appending what we got in our first read. This makes that the function only stopt when either it gets the end of the introduced command, or a ";;" characters
+
+
+
+  c) Now, whenever we introduce a command with a ";;" in the middle, it will only procees it to that oint. For example:
+
+
+
+              >> true;; this is clearly a syntax error
+
+                 true : Bool
+
+-------------------------------------------------------------------------------
+
+                 >> if true
+                           then 1
+                    else
+                            0;;
+
+                 1 : Nat
+
+--------------------------------------------------------------------------------
+
+                 >> if false then 1;; else 0
+
+                 syntax error
+
+--------------------------------------------------------------------------------

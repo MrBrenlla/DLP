@@ -30,13 +30,15 @@
 %token <string> STRINGV
 
 %start s
-%type <Lambda.term> s
+%type <Lambda.variable> s
 
 %%
 
 s :
     term EOF
-      { $1 }
+      { VarValue $1 }
+    | STRINGV EQ term EOF
+      {VarAsignation ($1,$3)}
 
 term :
     appTerm
@@ -48,7 +50,7 @@ term :
   | LET STRINGV EQ term IN term
       { TmLetIn ($2, $4, $6) }
   | LETREC STRINGV COLON ty EQ term IN term
-      {TmLetRecIn ($2, $4, $6, $8) }
+      {TmLetIn ($2, TmFix(TmAbs($2,$4,$6)),$8) }
 
 
 appTerm :
