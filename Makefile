@@ -18,4 +18,3 @@ main: main.ml
 
 clean:
 	rm -f lexer.ml parser.mli parser.ml *.cmi *.cmo *~
-

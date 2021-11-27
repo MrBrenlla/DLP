@@ -2,6 +2,7 @@
 type ty =
     TyBool
   | TyNat
+  | TyStr
   | TyArr of ty * ty
 ;;
 
@@ -17,7 +18,9 @@ type term =
   | TmSucc of term
   | TmPred of term
   | TmIsZero of term
+  | TmConcat of term * term
   | TmVar of string
+  | TmString of string
   | TmAbs of string * ty * term
   | TmApp of term * term
   | TmLetIn of string * term * term
@@ -40,4 +43,4 @@ val typeof : context -> term -> ty;;
 
 val string_of_term : term -> string;;
 exception NoRuleApplies;;
-val eval : term -> term;;
+val eval : term -> (string * term) list -> term;;

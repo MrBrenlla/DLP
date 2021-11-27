@@ -16,17 +16,20 @@ rule token = parse
   | "succ"      { SUCC }
   | "pred"      { PRED }
   | "iszero"    { ISZERO }
+  | "concat"    { CONCAT }
   | "let"       { LET }
   | "letrec"    { LETREC }
   | "in"        { IN }
   | "Bool"      { BOOL }
   | "Nat"       { NAT }
+  | "Str"       { STR }
   | '('         { LPAREN }
   | ')'         { RPAREN }
   | '.'         { DOT }
   | '='         { EQ }
   | ':'         { COLON }
   | "->"        { ARROW }
+  | '"'[^'"']*'"'     { STRING (String.sub (Lexing.lexeme lexbuf) 1 (String.length (Lexing.lexeme lexbuf) - 2))}
   | ['0'-'9']+  { INTV (int_of_string (Lexing.lexeme lexbuf)) }
   | ['a'-'z']['a'-'z' '_' '0'-'9']*
                 { STRINGV (Lexing.lexeme lexbuf) }

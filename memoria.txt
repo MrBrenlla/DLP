@@ -9,12 +9,18 @@ The purpose of this memory is to recopilate all the changes and features applied
 	-For each change applied, we will represent it as a point, in which we will talk about:
 
 
-
-		a) The objective of the modification/agregation of the code for reach our objective
+		a) The objective of the modification/agregation of the code
 
 		b) The modifications applied, as well as a brief explanantion about why it was made that way
 
 		c) Specific examples about the functioning of the code before and after the implementations
+
+
+
+
+-------------------------------------------------------------------------------------------------------
+
+
 
 
 Point 1): Improvements in writting and lecturing of Lambda-calculus: Recognition of multi-line expressions
@@ -29,7 +35,7 @@ Point 1): Improvements in writting and lecturing of Lambda-calculus: Recognition
      called "read", that works as it follows:
 
 
-let rec read ()=
+		 				let rec read ()=
                let rec auxread = function
                  h::(""::_)-> h
                  | h::[]-> h ^ " " ^ read()
@@ -53,7 +59,7 @@ let rec read ()=
 
                  true : Bool
 
--------------------------------------------------------------------------------
+
 
                  >> if true
                            then 1
@@ -62,10 +68,172 @@ let rec read ()=
 
                  1 : Nat
 
---------------------------------------------------------------------------------
+
 
                  >> if false then 1;; else 0
 
                  syntax error
 
+
+
 --------------------------------------------------------------------------------
+
+
+
+
+Point 2) Arrangement of an internal fix point combinator, in order to be able to write direct recursive functions
+
+
+ 	a) In this point, we will try to define a new combinator to define recursive functions in a easier way. Initially, we will use the key word "letrec", followed by the type of the function we will built,
+	and its implementation. It should end up like the example above:
+
+							letrec sum : Nat -> Nat -> Nat =
+								lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m) in
+								sum 21 34
+
+
+
+
+	b) For this purpose, the following files have been updated:
+
+
+			lexer.mll: We included "letrec" as the keyword in order to apply recursivity
+
+			parser.mly: We added lines refering to the application of recursive functions in the term application appart.
+
+			lambda.ml: We had to include a new kind of term based on the application of the fix function (our applied-method for recursivity) from lambda-calculus. These changes are:
+
+									-"TmFix" has been added as a new kind of term
+
+									-The case "TmFix" has been added to the "typeof" function in order for the program to know how to proceed with this kind of terms. Same with "string_of_term",
+									"free_vars", and "subst" functions
+
+			lambda.mli: "TmFix" has been added to the list of existing terms.
+
+
+
+
+	c) Now, with just applyng the writting told in sub-appart a), we are able to express recursivity in a way easier form. For example, the result of applying the function talked about
+	before:
+
+							letrec sum : Nat -> Nat -> Nat =
+								lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m) in
+								sum 21 3
+
+
+
+
+
+
+---------------------------------------------------------------------------------
+
+
+
+
+
+
+
+Point 3): Include of a variable CONTEXT
+
+	a) In this part we are looking for include a variable context that allow us to save values in vars and use them in next operations. For this we are using the syntax x = expresion, where x is the name
+		 of the var and the solution of the expresion is the value that we are going to save in it. Also, we must know that we are usin a functional implementation of var context because as in Lambda calculus
+		 we use short expresions that work similar to mathematical functions using a imperative type will only make our encoding more difficult.
+
+
+	b) In order to achive this we will subdivide what we did in 3 steps, one fore each file we changed:
+
+
+				1.- The parser will not more return a type Term, it will now return a new type called variable with two posible creators:
+							varValue of term: wich just requests for the evaluation for that Term.
+							varAsignation of string * term: wich requests to save the value of the avaluation of the term in a var with the string as name.
+
+				2.- In main.ml we will separate the flow of the function in two, one for each new types. In the case of varValue is pretty similar to the original but for the varAsignation we will have to
+						add the type of var that we want to include in the context and also have a list with their values after evaluation.
+
+				3.- For all of this have sense we need to finally replace the vars in the expresions, and for that we added a new argument for the function eval wich is the list of vars and changed it as it follows:
+
+									let rec use_vars tm = function
+											(x,s)::t-> use_vars (subst x s tm) t
+										| []-> tm
+									;;
+
+									let rec eval_loop tm =
+										try
+											let tm' = eval1 tm in
+											eval_loop tm'
+										with
+											NoRuleApplies -> tm
+									;;
+
+									let eval tm vars=
+										let tm'=eval_loop tm in
+										eval_loop (use_vars tm' vars)
+									;;
+
+							This new code will just make a first atempt to evaluate the expresion directly, search and replace vars after that and last but not less, a final evaluation.
+
+		c) Now we can save values as easy as this:
+
+
+				>> x=0;;
+
+					x = 0 : Nat
+
+				>> f = Lx:Nat.(succ x);;
+
+					f = (lambda x:Nat. succ (x)) : (Nat) -> (Nat)
+
+				>> f x;;
+
+					1 : Nat
+
+
+
+------------------------------------------------------------------------------------
+
+
+
+Point 4) Inclusion of a string type, plus implementation of a concat functions
+
+
+
+
+	a) For this point, we will try to add a string type to our program, in order to give a basic expresions support to the user of the evalutor. Besides, we will also create a
+	concatenation function in order to append two string values, which can be really useful in many situations.
+
+
+
+
+	b) The implementation of this objective has required changes in several files:
+
+
+		-lexer.mll: A STRING, STR and CONCAT tokens have been added.
+
+		-parser.mly: The token CONCAT has been added in appTerm, the STRING token has been added into atomicTerm and STR token in atomicTy.
+
+		-lamba.ml: Inclusion of string in the list of terms and types. Implementation of concat case in "typeof", "string_of_term", "eval1" and "subs" function.
+
+
+
+
+	c) The inclusion of the string type allow us to operate with this new type in the next form:
+
+						>> "a";;
+
+						  "a" : Str
+
+						>> x="abc";;
+
+						  x = "abc" : Str
+
+						>> concat "a" "b";;
+
+						  "ab" : Str
+
+						>> f=Lx:Str.concat x "fin";;
+
+						  f = (lambda x:Str. concat(x) ("fin")) : (Str) -> (Str)
+
+						>> f "del";;
+
+						  "delfin" : Str

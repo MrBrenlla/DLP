@@ -16,7 +16,7 @@ let top_level_loop () =
         let rec auxread = function
           h::(""::_)-> h
           | h::[]-> h ^ " " ^ read()
-          | h::t->h ^ (auxread t)
+          | h::t->h ^";"^(auxread t)
           | [] -> read()
         in
         auxread (String.split_on_char ';' (read_line () ) )
@@ -24,15 +24,15 @@ let top_level_loop () =
       let tm = s token (from_string (read())) in
       match tm with
         VarAsignation (name, tm)->
-          let tm' = eval tm in
+          let tm' = eval tm vars in
           print_newline ();
           let tyTm = typeof ctx tm in
           let ctx' = addbinding ctx name tyTm in
-          print_endline (name^" = "^string_of_term (tm') ^ " : " ^ string_of_ty tyTm);
+          print_endline ("  "^name^" = "^string_of_term (tm') ^ " : " ^ string_of_ty tyTm^"\n");
           loop ctx' ((name,tm')::vars)
         | VarValue tm ->
           print_newline ();let tyTm = typeof ctx tm in
-          print_endline (string_of_term (eval tm) ^ " : " ^ string_of_ty tyTm);
+          print_endline ("  "^string_of_term (eval tm vars) ^ " : " ^ string_of_ty tyTm^"\n");
           loop ctx vars
     with
        Lexical_error ->

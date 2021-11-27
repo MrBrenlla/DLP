@@ -7,6 +7,7 @@ exception Type_error of string
 type ty =
     TyBool
   | TyNat
+  | TyStr
   | TyArr of ty * ty
 ;;
 
@@ -22,7 +23,9 @@ type term =
   | TmSucc of term
   | TmPred of term
   | TmIsZero of term
+  | TmConcat of term * term
   | TmVar of string
+  | TmString of string
   | TmAbs of string * ty * term
   | TmApp of term * term
   | TmLetIn of string * term * term
@@ -56,6 +59,8 @@ let rec string_of_ty ty = match ty with
       "Bool"
   | TyNat ->
       "Nat"
+  | TyStr->
+      "Str"
   | TyArr (ty1, ty2) ->
       "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
 ;;
@@ -85,7 +90,8 @@ let rec typeof ctx tm = match tm with
     (* T-Zero *)
   | TmZero ->
       TyNat
-
+  | TmString s->
+      TyStr
     (* T-Succ *)
   | TmSucc t1 ->
       if typeof ctx t1 = TyNat then TyNat
@@ -100,6 +106,10 @@ let rec typeof ctx tm = match tm with
   | TmIsZero t1 ->
       if typeof ctx t1 = TyNat then TyBool
       else raise (Type_error "argument of iszero is not a number")
+
+  | TmConcat (t1,t2) ->
+      if ((typeof ctx t1 = TyStr) && (typeof ctx t2 = TyStr)) then TyStr
+      else raise (Type_error "arguments of concat are not a strings")
 
     (* T-Var *)
   | TmVar x ->
@@ -161,6 +171,10 @@ let rec string_of_term = function
       "pred " ^ "(" ^ string_of_term t ^ ")"
   | TmIsZero t ->
       "iszero " ^ "(" ^ string_of_term t ^ ")"
+  | TmConcat (t1,t2) ->
+      "concat"^"(" ^ string_of_term t1 ^ ") ("^string_of_term t2 ^ ")"
+  | TmString s ->
+      "\""^s^"\""
   | TmVar s ->
       s
   | TmAbs (s, tyS, t) ->
@@ -192,12 +206,16 @@ let rec free_vars tm = match tm with
       lunion (lunion (free_vars t1) (free_vars t2)) (free_vars t3)
   | TmZero ->
       []
+  | TmString t->
+      []
   | TmSucc t ->
       free_vars t
   | TmPred t ->
       free_vars t
   | TmIsZero t ->
       free_vars t
+  | TmConcat (t1, t2) ->
+      lunion (free_vars t1) (free_vars t2)
   | TmVar s ->
       [s]
   | TmAbs (s, _, t) ->
@@ -223,12 +241,16 @@ let rec subst x s tm = match tm with
       TmIf (subst x s t1, subst x s t2, subst x s t3)
   | TmZero ->
       TmZero
+  | TmString s->
+      TmString s
   | TmSucc t ->
       TmSucc (subst x s t)
   | TmPred t ->
       TmPred (subst x s t)
   | TmIsZero t ->
       TmIsZero (subst x s t)
+  | TmConcat (t1, t2) ->
+      TmConcat (subst x s t1, subst x s t2)
   | TmVar y ->
       if y = x then s else tm
   | TmAbs (y, tyY, t) ->
@@ -261,6 +283,7 @@ let rec isval tm = match tm with
     TmTrue  -> true
   | TmFalse -> true
   | TmAbs _ -> true
+  | TmString _ -> true
   | t when isnumericval t -> true
   | _ -> false
 ;;
@@ -313,6 +336,18 @@ let rec eval1 tm = match tm with
       let t1' = eval1 t1 in
       TmIsZero t1'
 
+  |TmConcat (TmString t1, TmString t2)->
+      TmString(t1^t2)
+
+  |TmConcat (TmString t1,t2)->
+      TmConcat(TmString t1, eval1 t2)
+
+  |TmConcat (t1, TmString t2)->
+      TmConcat(eval1 t1, TmString t2)
+
+  |TmConcat (t1,t2)->
+      TmConcat(eval1 t1, eval1 t2)
+
     (* E-AppAbs *)
   | TmApp (TmAbs(x, _, t12), v2) when isval v2 ->
       subst x v2 t12
@@ -349,11 +384,20 @@ let rec eval1 tm = match tm with
       raise NoRuleApplies
 ;;
 
+let rec use_vars tm = function
+    (x,s)::t-> use_vars (subst x s tm) t
+  | []-> tm
+;;
 
-let rec eval tm =
+let rec eval_loop tm =
   try
     let tm' = eval1 tm in
-    eval tm'
+    eval_loop tm'
   with
     NoRuleApplies -> tm
+;;
+
+let eval tm vars=
+  let tm'=eval_loop tm in
+  eval_loop (use_vars tm' vars)
 ;;
