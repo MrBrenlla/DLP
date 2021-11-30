@@ -9,6 +9,7 @@ type ty =
   | TyNat
   | TyStr
   | TyArr of ty * ty
+  | TyPair of ty * ty
 ;;
 
 type context =
@@ -20,6 +21,9 @@ type term =
   | TmFalse
   | TmIf of term * term * term
   | TmZero
+  | TmPair of term * term
+  | TmFirst of term
+  | TmSecond of term
   | TmSucc of term
   | TmPred of term
   | TmIsZero of term
@@ -63,6 +67,8 @@ let rec string_of_ty ty = match ty with
       "Str"
   | TyArr (ty1, ty2) ->
       "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
+  | TyPair (ty1,ty2)->
+      "(("^ string_of_ty ty1^"),("^ string_of_ty ty2 ^"))"
 ;;
 
 
@@ -90,6 +96,8 @@ let rec typeof ctx tm = match tm with
     (* T-Zero *)
   | TmZero ->
       TyNat
+  | TmPair(t1,t2) ->
+      TyPair(typeof ctx t1,typeof ctx t2)
   | TmString s->
       TyStr
     (* T-Succ *)
@@ -109,7 +117,18 @@ let rec typeof ctx tm = match tm with
 
   | TmConcat (t1,t2) ->
       if ((typeof ctx t1 = TyStr) && (typeof ctx t2 = TyStr)) then TyStr
-      else raise (Type_error "arguments of concat are not a strings")
+      else raise (Type_error "arguments of concat are not strings")
+
+  | TmFirst (TmPair(t1,_))->
+      typeof ctx t1
+
+  | TmFirst _  ->
+      raise (Type_error "argument of First is not a pair")
+
+  |TmSecond (TmPair (_,t2)) ->
+      typeof ctx t2
+
+  | TmSecond _ -> raise (Type_error "arguments of Second is not a pair")
 
     (* T-Var *)
   | TmVar x ->
@@ -171,8 +190,16 @@ let rec string_of_term = function
       "pred " ^ "(" ^ string_of_term t ^ ")"
   | TmIsZero t ->
       "iszero " ^ "(" ^ string_of_term t ^ ")"
+  | TmPair(t1,t2)->
+        "(("^ string_of_term t1^"),("^ string_of_term t2 ^"))"
   | TmConcat (t1,t2) ->
       "concat"^"(" ^ string_of_term t1 ^ ") ("^string_of_term t2 ^ ")"
+  | TmFirst(t1)->
+      "first" ^ "(" ^ string_of_term t1 ^ ")"
+
+  | TmSecond (t1) ->
+      "second" ^ "(" ^ (string_of_term t1) ^ ")"
+
   | TmString s ->
       "\""^s^"\""
   | TmVar s ->
@@ -214,8 +241,14 @@ let rec free_vars tm = match tm with
       free_vars t
   | TmIsZero t ->
       free_vars t
+  | TmPair(t1,t2)->
+      lunion (free_vars t1) (free_vars t2)
   | TmConcat (t1, t2) ->
       lunion (free_vars t1) (free_vars t2)
+  | TmFirst t->
+      free_vars t
+  | TmSecond t->
+      free_vars t
   | TmVar s ->
       [s]
   | TmAbs (s, _, t) ->
@@ -249,8 +282,14 @@ let rec subst x s tm = match tm with
       TmPred (subst x s t)
   | TmIsZero t ->
       TmIsZero (subst x s t)
+  | TmPair (t1, t2) ->
+      TmPair (subst x s t1, subst x s t2)
   | TmConcat (t1, t2) ->
       TmConcat (subst x s t1, subst x s t2)
+  | TmFirst t ->
+      TmFirst (subst x s t)
+  | TmSecond t ->
+    TmSecond (subst x s t)
   | TmVar y ->
       if y = x then s else tm
   | TmAbs (y, tyY, t) ->
@@ -284,6 +323,7 @@ let rec isval tm = match tm with
   | TmFalse -> true
   | TmAbs _ -> true
   | TmString _ -> true
+  | TmPair (_,_) -> true
   | t when isnumericval t -> true
   | _ -> false
 ;;
@@ -336,6 +376,9 @@ let rec eval1 tm = match tm with
       let t1' = eval1 t1 in
       TmIsZero t1'
 
+  |TmPair(t1,t2)->
+      TmPair(eval1 t1, eval1 t2)
+
   |TmConcat (TmString t1, TmString t2)->
       TmString(t1^t2)
 
@@ -348,6 +391,16 @@ let rec eval1 tm = match tm with
   |TmConcat (t1,t2)->
       TmConcat(eval1 t1, eval1 t2)
 
+  |TmFirst(TmPair(t1,_)) ->
+    t1
+
+  |TmFirst t ->
+      TmFirst (eval1 t)
+
+  |TmSecond(TmPair(_,t2)) ->
+      t2
+  |TmSecond t ->
+      TmSecond(eval1 t)
     (* E-AppAbs *)
   | TmApp (TmAbs(x, _, t12), v2) when isval v2 ->
       subst x v2 t12

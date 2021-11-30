@@ -4,6 +4,7 @@ type ty =
   | TyNat
   | TyStr
   | TyArr of ty * ty
+  | TyPair of ty * ty
 ;;
 
 type context =
@@ -15,6 +16,9 @@ type term =
   | TmFalse
   | TmIf of term * term * term
   | TmZero
+  | TmPair of term * term
+  | TmFirst of term
+  | TmSecond of term
   | TmSucc of term
   | TmPred of term
   | TmIsZero of term

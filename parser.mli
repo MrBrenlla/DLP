@@ -15,8 +15,11 @@ type token =
   | BOOL
   | NAT
   | STR
+  | FST
+  | SCN
   | LPAREN
   | RPAREN
+  | COMA
   | DOT
   | EQ
   | COLON

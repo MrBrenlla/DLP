@@ -18,6 +18,13 @@ let fix = lambda f.(lambda x. f (lambda y. x x y)) (lambda x. f (lambda y. x x y
 let fix = lambda f.(lambda x. f (lambda y. x x y)) (lambda x. f (lambda y. x x y)) in let sumaux = lambda f. (lambda n. (lambda m. if (iszero n) then m else succ (f (pred n) m))) in let sum = fix sumaux in let prodaux = lambda f. (lambda n. (lambda m. if (iszero (pred n)) then m else sum (f (pred n) m) m)) in let prod = fix prodaux in prod 12 5
 
 
-letrec sum : Nat -> Nat -> Nat = lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m) in sum 21 34;;
+ sum 21 34;;
 
 letrec zero : Nat -> Nat = lambda n : Nat. if iszero n then n else (zero (pred n)) in zero 100;;
+
+fib = letrec sum : Nat -> Nat -> Nat = lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m) in
+(letrec fib: Nat-> Nat = Ln:Nat. if (iszero n) then (0) else (if (iszero (pred n)) then 1 else (sum (fib (pred(n))) (fib (pred(pred(n)))))) in Lx:Nat.fib x);;                                )
+
+
+mult = (letrec sum : Nat -> Nat -> Nat = lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m) in
+letrec mult : Nat -> Nat -> Nat = lambda n: Nat. lambda m:Nat. if iszero n then 0 else sum m (mult (pred n) m) in Lx:Nat.Ly:Nat.mult x y);;

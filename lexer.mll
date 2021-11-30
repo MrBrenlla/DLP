@@ -23,8 +23,11 @@ rule token = parse
   | "Bool"      { BOOL }
   | "Nat"       { NAT }
   | "Str"       { STR }
+  | "first"     { FST }
+  | "second"    { SCN }
   | '('         { LPAREN }
   | ')'         { RPAREN }
+  | ','         { COMA }
   | '.'         { DOT }
   | '='         { EQ }
   | ':'         { COLON }

@@ -19,9 +19,11 @@
 %token BOOL
 %token NAT
 %token STR
-
+%token FST
+%token SCN
 %token LPAREN
 %token RPAREN
+%token COMA
 %token DOT
 %token EQ
 %token COLON
@@ -61,6 +63,10 @@ appTerm :
       { $1 }
   | SUCC atomicTerm
       { TmSucc $2 }
+  | FST atomicTerm
+      { TmFirst $2}
+  | SCN atomicTerm
+      {TmSecond $2}
   | PRED atomicTerm
       { TmPred $2 }
   | ISZERO atomicTerm
@@ -73,6 +79,8 @@ appTerm :
 atomicTerm :
     LPAREN term RPAREN
       { $2 }
+  | LPAREN term COMA term RPAREN
+    { TmPair($2,$4)}
   | TRUE
       { TmTrue }
   | FALSE
