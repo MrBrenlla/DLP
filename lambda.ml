@@ -119,16 +119,17 @@ let rec typeof ctx tm = match tm with
       if ((typeof ctx t1 = TyStr) && (typeof ctx t2 = TyStr)) then TyStr
       else raise (Type_error "arguments of concat are not strings")
 
-  | TmFirst (TmPair(t1,_))->
-      typeof ctx t1
+  | TmFirst (t)->
+      let t'= typeof ctx t in
+      (match t' with
+        TyPair(t1,_)->t1
+        | _ -> raise (Type_error "argument of First is not a pair"))
 
-  | TmFirst _  ->
-      raise (Type_error "argument of First is not a pair")
-
-  |TmSecond (TmPair (_,t2)) ->
-      typeof ctx t2
-
-  | TmSecond _ -> raise (Type_error "arguments of Second is not a pair")
+  | TmSecond(t)->
+      let t'= typeof ctx t in
+      (match t' with
+        TyPair(_,t2)->t2
+        | _ -> raise (Type_error "argument of First is not a pair"))
 
     (* T-Var *)
   | TmVar x ->
@@ -357,7 +358,6 @@ let rec eval1 tm = match tm with
     (* E-PredSucc *)
   | TmPred (TmSucc nv1) when isnumericval nv1 ->
       nv1
-
     (* E-Pred *)
   | TmPred t1 ->
       let t1' = eval1 t1 in
