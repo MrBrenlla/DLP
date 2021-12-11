@@ -5,6 +5,8 @@ type ty =
   | TyStr
   | TyArr of ty * ty
   | TyPair of ty * ty
+  | TyList of ty
+  | TyEmptyList
 ;;
 
 type context =
@@ -19,6 +21,9 @@ type term =
   | TmPair of term * term
   | TmFirst of term
   | TmSecond of term
+  | TmList of term list
+  | TmHead of term
+  | TmTail of term
   | TmSucc of term
   | TmPred of term
   | TmIsZero of term

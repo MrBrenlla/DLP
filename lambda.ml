@@ -10,6 +10,8 @@ type ty =
   | TyStr
   | TyArr of ty * ty
   | TyPair of ty * ty
+  | TyList of ty
+  | TyEmptyList
 ;;
 
 type context =
@@ -24,6 +26,9 @@ type term =
   | TmPair of term * term
   | TmFirst of term
   | TmSecond of term
+  | TmList of term list
+  | TmHead of term
+  | TmTail of term
   | TmSucc of term
   | TmPred of term
   | TmIsZero of term
@@ -69,6 +74,10 @@ let rec string_of_ty ty = match ty with
       "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
   | TyPair (ty1,ty2)->
       "(("^ string_of_ty ty1^"),("^ string_of_ty ty2 ^"))"
+  | TyList ty1 ->
+      "("^ string_of_ty ty1^" list)"
+  | TyEmptyList ->
+      "(empty list)"
 ;;
 
 
@@ -96,10 +105,46 @@ let rec typeof ctx tm = match tm with
     (* T-Zero *)
   | TmZero ->
       TyNat
+
   | TmPair(t1,t2) ->
       TyPair(typeof ctx t1,typeof ctx t2)
+
+  | TmFirst (t)->
+      let t'= typeof ctx t in
+      (match t' with
+        TyPair(t1,_)->t1
+        | _ -> raise (Type_error "argument of First is not a pair"))
+
+  | TmSecond(t)->
+      let t'= typeof ctx t in
+      (match t' with
+          TyPair(_,t2)->t2
+          | _ -> raise (Type_error "argument of First is not a pair"))
+
+  | TmList []->
+      TyEmptyList
+
+  | TmList (h::_) ->
+      TyList(typeof ctx h)
+
+  |TmTail t ->
+      let t'= typeof ctx t in
+      (match t' with
+            TyList ty -> TyList ty
+          | TyEmptyList -> raise (Type_error "Empty list has no tail")
+          | _ -> raise (Type_error "argument of tail is not a list"))
+
+  | TmHead t ->
+      let t'= typeof ctx t in
+        (match t' with
+              TyList ty->ty
+            | TyEmptyList -> raise (Type_error "Empty list has no head")
+            | _ -> raise (Type_error "argument of head is not a list"))
+
+
   | TmString s->
       TyStr
+
     (* T-Succ *)
   | TmSucc t1 ->
       if typeof ctx t1 = TyNat then TyNat
@@ -119,17 +164,7 @@ let rec typeof ctx tm = match tm with
       if ((typeof ctx t1 = TyStr) && (typeof ctx t2 = TyStr)) then TyStr
       else raise (Type_error "arguments of concat are not strings")
 
-  | TmFirst (t)->
-      let t'= typeof ctx t in
-      (match t' with
-        TyPair(t1,_)->t1
-        | _ -> raise (Type_error "argument of First is not a pair"))
 
-  | TmSecond(t)->
-      let t'= typeof ctx t in
-      (match t' with
-        TyPair(_,t2)->t2
-        | _ -> raise (Type_error "argument of First is not a pair"))
 
     (* T-Var *)
   | TmVar x ->
@@ -168,6 +203,7 @@ let rec typeof ctx tm = match tm with
 ;;
 
 
+
 (* TERMS MANAGEMENT (EVALUATION) *)
 
 let rec string_of_term = function
@@ -187,19 +223,40 @@ let rec string_of_term = function
         | TmSucc s -> f (n+1) s
         | _ -> "succ " ^ "(" ^ string_of_term t ^ ")"
       in f 1 t
+
   | TmPred t ->
       "pred " ^ "(" ^ string_of_term t ^ ")"
+
   | TmIsZero t ->
       "iszero " ^ "(" ^ string_of_term t ^ ")"
+
   | TmPair(t1,t2)->
         "(("^ string_of_term t1^"),("^ string_of_term t2 ^"))"
+
   | TmConcat (t1,t2) ->
       "concat"^"(" ^ string_of_term t1 ^ ") ("^string_of_term t2 ^ ")"
+
   | TmFirst(t1)->
       "first" ^ "(" ^ string_of_term t1 ^ ")"
 
   | TmSecond (t1) ->
       "second" ^ "(" ^ (string_of_term t1) ^ ")"
+
+  | TmList []->
+      "[]"
+
+  | TmList (h::t) ->
+      let rec string_of_list = function
+            h::t -> ","^string_of_term h ^ string_of_list t
+          | []-> ""
+      in
+      "["^ string_of_term h^ string_of_list t ^"]"
+
+  | TmHead(t1) ->
+      "head" ^ "(" ^ (string_of_term t1) ^ ")"
+
+  | TmTail(t1) ->
+      "tail" ^ "(" ^ (string_of_term t1) ^ ")"
 
   | TmString s ->
       "\""^s^"\""
@@ -250,6 +307,12 @@ let rec free_vars tm = match tm with
       free_vars t
   | TmSecond t->
       free_vars t
+  | TmList t ->
+      List.fold_left lunion [] (List.map free_vars t)
+  | TmHead t->
+      free_vars t
+  | TmTail t->
+      free_vars t
   | TmVar s ->
       [s]
   | TmAbs (s, _, t) ->
@@ -290,7 +353,13 @@ let rec subst x s tm = match tm with
   | TmFirst t ->
       TmFirst (subst x s t)
   | TmSecond t ->
-    TmSecond (subst x s t)
+      TmSecond (subst x s t)
+  | TmList t ->
+      TmList(List.map (subst x s) t)
+  | TmHead t ->
+      TmHead (subst x s t)
+  | TmTail t ->
+      TmTail (subst x s t)
   | TmVar y ->
       if y = x then s else tm
   | TmAbs (y, tyY, t) ->
@@ -325,6 +394,7 @@ let rec isval tm = match tm with
   | TmAbs _ -> true
   | TmString _ -> true
   | TmPair (_,_) -> true
+  | TmList _ -> true
   | t when isnumericval t -> true
   | _ -> false
 ;;
@@ -399,8 +469,26 @@ let rec eval1 tm = match tm with
 
   |TmSecond(TmPair(_,t2)) ->
       t2
+
   |TmSecond t ->
       TmSecond(eval1 t)
+
+  | TmList (h::t) ->
+      TmList(List.map eval1 (h::t))
+
+  |TmHead(TmList(h::_)) ->
+      h
+
+  |TmHead t ->
+      TmHead (eval1 t)
+
+  |TmTail(TmList(_::t)) ->
+        TmList(t)
+
+
+  |TmTail t ->
+        TmTail (eval1 t)
+
     (* E-AppAbs *)
   | TmApp (TmAbs(x, _, t12), v2) when isval v2 ->
       subst x v2 t12

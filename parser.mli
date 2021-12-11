@@ -12,6 +12,9 @@ type token =
   | LET
   | LETREC
   | IN
+  | LIST
+  | HEAD
+  | TAIL
   | BOOL
   | NAT
   | STR
@@ -19,9 +22,12 @@ type token =
   | SCN
   | LPAREN
   | RPAREN
+  | LCORCH
+  | RCORCH
   | COMA
   | DOT
   | EQ
+  | AST
   | COLON
   | ARROW
   | EOF

@@ -237,3 +237,27 @@ Point 4) Inclusion of a string type, plus implementation of a concat functions
 						>> f "del";;
 
 						  "delfin" : Str
+
+
+
+-----------------------------------------------------------------------------------------------
+
+
+Point 5) Adding pair type
+
+	a) We will try to add a pair type in order to represent tuples of values in easy form, as well as implement "first" and "second" operation to obtain
+	the value of a certain element of a tuple in a direct way. This elemnts will have the forma: (a,b). Where "a" is the first element of the pair, and "b"
+	the second, both separated through a coma and gathered between parenthesis
+
+
+
+	b) The arrangement of code made to obtain this new type has been at it is followed:
+
+		-lexer.mll: A COMA token has been added
+
+		-parser.mly: The token FST and SCN has been added in appTerm, pair form has been added in atomicTerm
+
+		-lamba.ml: Inclusion of TyPair and TermPair, as well as their use in evaluation, typing, printing, and substitution functions (typeof, string_of_ty, string_of_term)
+
+
+	c) Examples of pair evaluation comes as it follows:

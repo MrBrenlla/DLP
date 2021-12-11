@@ -25,11 +25,17 @@ rule token = parse
   | "Str"       { STR }
   | "first"     { FST }
   | "second"    { SCN }
+  | "list"      { LIST }
+  | "head"      { HEAD }
+  | "tail"      { TAIL }
   | '('         { LPAREN }
   | ')'         { RPAREN }
+  | '['         { LCORCH }
+  | ']'         { RCORCH }
   | ','         { COMA }
   | '.'         { DOT }
   | '='         { EQ }
+  | '*'         { AST }
   | ':'         { COLON }
   | "->"        { ARROW }
   | '"'[^'"']*'"'     { STRING (String.sub (Lexing.lexeme lexbuf) 1 (String.length (Lexing.lexeme lexbuf) - 2))}

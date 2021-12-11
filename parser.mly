@@ -16,6 +16,9 @@
 %token LET
 %token LETREC
 %token IN
+%token LIST
+%token HEAD
+%token TAIL
 %token BOOL
 %token NAT
 %token STR
@@ -23,9 +26,12 @@
 %token SCN
 %token LPAREN
 %token RPAREN
+%token LCORCH
+%token RCORCH
 %token COMA
 %token DOT
 %token EQ
+%token AST
 %token COLON
 %token ARROW
 %token EOF
@@ -33,6 +39,7 @@
 %token <int> INTV
 %token <string> STRINGV
 %token <string> STRING
+
 
 %start s
 %type <Lambda.variable> s
@@ -73,6 +80,10 @@ appTerm :
       { TmIsZero $2 }
   | CONCAT atomicTerm atomicTerm
       {TmConcat ($2,$3)}
+  | TAIL atomicTerm
+      {TmTail $2}
+  | HEAD atomicTerm
+      {TmHead $2}
   | appTerm atomicTerm
       { TmApp ($1, $2) }
 
@@ -81,6 +92,10 @@ atomicTerm :
       { $2 }
   | LPAREN term COMA term RPAREN
     { TmPair($2,$4)}
+  | LCORCH RCORCH
+      {TmList []}
+  | LCORCH term lista
+    {TmList ($2::$3)}
   | TRUE
       { TmTrue }
   | FALSE
@@ -95,11 +110,21 @@ atomicTerm :
   | STRING
       { TmString $1}
 
+lista :
+    COMA term lista
+      {$2::$3}
+  | RCORCH
+      {[]}
+
 ty :
     atomicTy
       { $1 }
   | atomicTy ARROW ty
       { TyArr ($1, $3) }
+  | ty AST ty
+      { TyPair ($1,$3)}
+  | ty LIST
+      { TyList $1}
 
 atomicTy :
     LPAREN ty RPAREN
