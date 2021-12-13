@@ -28,10 +28,13 @@ rule token = parse
   | "list"      { LIST }
   | "head"      { HEAD }
   | "tail"      { TAIL }
+  | "isempty"   { ISEMPTY }
   | '('         { LPAREN }
   | ')'         { RPAREN }
   | '['         { LCORCH }
   | ']'         { RCORCH }
+  | '{'         { LBRAC }
+  | '}'         { RBRAC }
   | ','         { COMA }
   | '.'         { DOT }
   | '='         { EQ }

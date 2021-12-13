@@ -19,6 +19,7 @@
 %token LIST
 %token HEAD
 %token TAIL
+%token ISEMPTY
 %token BOOL
 %token NAT
 %token STR
@@ -28,6 +29,8 @@
 %token RPAREN
 %token LCORCH
 %token RCORCH
+%token LBRAC
+%token RBRAC
 %token COMA
 %token DOT
 %token EQ
@@ -84,6 +87,8 @@ appTerm :
       {TmTail $2}
   | HEAD atomicTerm
       {TmHead $2}
+  | ISEMPTY atomicTerm
+      {TmIsEmpty $2}
   | appTerm atomicTerm
       { TmApp ($1, $2) }
 
@@ -91,11 +96,15 @@ atomicTerm :
     LPAREN term RPAREN
       { $2 }
   | LPAREN term COMA term RPAREN
-    { TmPair($2,$4)}
+      { TmPair($2,$4) }
   | LCORCH RCORCH
-      {TmList []}
+      { TmList [] }
   | LCORCH term lista
-    {TmList ($2::$3)}
+      { TmList ($2::$3) }
+  | LBRAC RBRAC
+      { TmRec [] }
+  | LBRAC STRINGV EQ term reg
+      { TmRec (($2,$4)::$5) }
   | TRUE
       { TmTrue }
   | FALSE
@@ -116,6 +125,12 @@ lista :
   | RCORCH
       {[]}
 
+reg :
+    COMA STRINGV EQ term reg
+      {($2,$4)::$5}
+  | RBRAC
+      {[]}
+
 ty :
     atomicTy
       { $1 }
@@ -125,6 +140,16 @@ ty :
       { TyPair ($1,$3)}
   | ty LIST
       { TyList $1}
+  | LBRAC RBRAC
+      { TyRec [] }
+  | LBRAC STRINGV COLON ty tyreg
+      { TyRec (($2,$4)::$5) }
+
+tyreg :
+    COMA STRINGV COLON ty tyreg
+      {($2,$4)::$5}
+  | RBRAC
+      {[]}
 
 atomicTy :
     LPAREN ty RPAREN

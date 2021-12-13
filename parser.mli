@@ -15,6 +15,7 @@ type token =
   | LIST
   | HEAD
   | TAIL
+  | ISEMPTY
   | BOOL
   | NAT
   | STR
@@ -24,6 +25,8 @@ type token =
   | RPAREN
   | LCORCH
   | RCORCH
+  | LBRAC
+  | RBRAC
   | COMA
   | DOT
   | EQ

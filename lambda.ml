@@ -12,6 +12,7 @@ type ty =
   | TyPair of ty * ty
   | TyList of ty
   | TyEmptyList
+  | TyRec of (string * ty) list
 ;;
 
 type context =
@@ -29,6 +30,7 @@ type term =
   | TmList of term list
   | TmHead of term
   | TmTail of term
+  | TmIsEmpty of term
   | TmSucc of term
   | TmPred of term
   | TmIsZero of term
@@ -39,6 +41,7 @@ type term =
   | TmApp of term * term
   | TmLetIn of string * term * term
   | TmFix of term
+  | TmRec of (string * term) list
 ;;
 
 type variable =
@@ -78,6 +81,10 @@ let rec string_of_ty ty = match ty with
       "("^ string_of_ty ty1^" list)"
   | TyEmptyList ->
       "(empty list)"
+  | TyRec l ->
+      let aux (a,b) = a^":"^(string_of_ty b) in
+      let ty' = String.concat "," (List.map aux l) in
+      "{"^ty'^"}"
 ;;
 
 
@@ -140,7 +147,12 @@ let rec typeof ctx tm = match tm with
               TyList ty->ty
             | TyEmptyList -> raise (Type_error "Empty list has no head")
             | _ -> raise (Type_error "argument of head is not a list"))
-
+  | TmIsEmpty t ->
+    let t'= typeof ctx t in
+      (match t' with
+            TyList _->TyBool
+          | TyEmptyList -> TyBool
+          | _ -> raise (Type_error "argument of head is not a list"))
 
   | TmString s->
       TyStr
@@ -195,11 +207,15 @@ let rec typeof ctx tm = match tm with
 
   | TmFix t1 ->
     let tyT1 = typeof ctx t1 in
-      match tyT1 with
+      (match tyT1 with
         TyArr (tyT11, tyT12) ->
           if tyT11 = tyT12 then tyT12
           else raise (Type_error "result of body not compatible with domain")
-       | _ -> raise (Type_error "arrow type expected")
+       | _ -> raise (Type_error "arrow type expected"))
+
+  | TmRec l ->
+      let aux (a,b) = (a,typeof ctx b) in
+      TyRec ( List.map aux l )
 ;;
 
 
@@ -258,6 +274,9 @@ let rec string_of_term = function
   | TmTail(t1) ->
       "tail" ^ "(" ^ (string_of_term t1) ^ ")"
 
+  | TmIsEmpty(t1) ->
+      "isempty" ^ "(" ^ (string_of_term t1) ^ ")"
+
   | TmString s ->
       "\""^s^"\""
   | TmVar s ->
@@ -270,6 +289,10 @@ let rec string_of_term = function
       "let " ^ s ^ " = " ^ string_of_term t1 ^ " in " ^ string_of_term t2
   | TmFix t->
       "(fix"^ string_of_term t ^ ")"
+  | TmRec l ->
+      let aux (a,b) = a^"="^(string_of_term b) in
+      let tm' = String.concat "," (List.map aux l) in
+      "{"^tm'^"}"
 ;;
 
 let rec ldif l1 l2 = match l1 with
@@ -313,6 +336,8 @@ let rec free_vars tm = match tm with
       free_vars t
   | TmTail t->
       free_vars t
+  | TmIsEmpty t->
+      free_vars t
   | TmVar s ->
       [s]
   | TmAbs (s, _, t) ->
@@ -323,6 +348,9 @@ let rec free_vars tm = match tm with
       lunion (ldif (free_vars t2) [s]) (free_vars t1)
   | TmFix t ->
       free_vars t
+  | TmRec l ->
+      let aux(a,b)= free_vars b in
+      List.fold_left lunion [] (List.map aux l)
 ;;
 
 let rec fresh_name x l =
@@ -360,6 +388,8 @@ let rec subst x s tm = match tm with
       TmHead (subst x s t)
   | TmTail t ->
       TmTail (subst x s t)
+  | TmIsEmpty t ->
+      TmIsEmpty (subst x s t)
   | TmVar y ->
       if y = x then s else tm
   | TmAbs (y, tyY, t) ->
@@ -380,6 +410,9 @@ let rec subst x s tm = match tm with
                 TmLetIn (z, subst x s t1, subst x s (subst y (TmVar z) t2))
   | TmFix t ->
       TmFix (subst x s t)
+  | TmRec l ->
+      let aux(a,b)=(a,subst x s b) in
+      TmRec (List.map aux l)
 ;;
 
 let rec isnumericval tm = match tm with
@@ -395,6 +428,7 @@ let rec isval tm = match tm with
   | TmString _ -> true
   | TmPair (_,_) -> true
   | TmList _ -> true
+  | TmRec _ -> true
   | t when isnumericval t -> true
   | _ -> false
 ;;
@@ -489,6 +523,11 @@ let rec eval1 tm = match tm with
   |TmTail t ->
         TmTail (eval1 t)
 
+  |TmIsEmpty t -> (match t with
+        TmList [] -> TmTrue
+        |TmList _ -> TmFalse
+        | _-> TmIsEmpty (eval1 t))
+
     (* E-AppAbs *)
   | TmApp (TmAbs(x, _, t12), v2) when isval v2 ->
       subst x v2 t12
@@ -520,6 +559,10 @@ let rec eval1 tm = match tm with
   |TmFix t1->
       let t1'= eval1 t1 in
       TmFix t1'
+
+  |TmRec (h::t) ->
+      let aux (a,b)= (a,eval1 b) in
+      TmRec(List.map aux (h::t))
 
   | _ ->
       raise NoRuleApplies

@@ -7,6 +7,7 @@ type ty =
   | TyPair of ty * ty
   | TyList of ty
   | TyEmptyList
+  | TyRec of (string * ty) list
 ;;
 
 type context =
@@ -24,6 +25,7 @@ type term =
   | TmList of term list
   | TmHead of term
   | TmTail of term
+  | TmIsEmpty of term
   | TmSucc of term
   | TmPred of term
   | TmIsZero of term
@@ -34,6 +36,7 @@ type term =
   | TmApp of term * term
   | TmLetIn of string * term * term
   | TmFix of term
+  | TmRec of (string * term) list
 ;;
 
 type variable =

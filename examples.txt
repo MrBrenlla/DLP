@@ -30,8 +30,8 @@ mult = (letrec sum : Nat -> Nat -> Nat = lambda n : Nat. lambda m : Nat. if isze
 letrec mult : Nat -> Nat -> Nat = lambda n: Nat. lambda m:Nat. if iszero n then 0 else sum m (mult (pred n) m) in Lx:Nat.Ly:Nat.mult x y);;
 
 
-length = letrec sum : List -> Nat -> Nat = lambda l : List. lambda aux : Nat. if (typeof l= TyEmptyList) then aux else sum (tail l) (Succ aux) in
-let length: List -> Nat. Lambda l: List. sum l 0;;
+length = letrec sum : List -> Nat -> Nat = lambda l : List. lambda aux : Nat. if (isempty l) then aux else sum (tail l) (Succ aux) in
+L length: List -> Nat. Lambda l: List. sum l 0;;
 
-map = letrec app: List -> ____ -> List -> List = lambda l : List. lambda f : _. Lambda res : List if (typeof l= TyEmptyList) then res else app (tail l) f (f (head l)::res) in
-let map = List -> ____ -> List: Lambda l : List. lambda f : _. app l f []
+map = letrec app: List -> ____ -> List -> List = lambda l : List. lambda f : _. Lambda res : List if (isEmpty l) then res else app (tail l) f (f (head l)::res) in
+L map = List -> ____ -> List: Lambda l : List. lambda f : _. app l f []

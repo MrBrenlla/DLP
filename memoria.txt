@@ -13,7 +13,7 @@ The purpose of this memory is to recopilate all the changes and features applied
 
 		b) The modifications applied, as well as a brief explanantion about why it was made that way
 
-		c) Specific examples about the functioning of the code before and after the implementations
+		c) Specific examples about the functioning of the code after the implementation
 
 
 
@@ -51,7 +51,7 @@ Point 1): Improvements in writting and lecturing of Lambda-calculus: Recognition
 
 
 
-  c) Now, whenever we introduce a command with a ";;" in the middle, it will only procees it to that oint. For example:
+  c) Now, whenever we introduce a command with a ";;" in the middle, it will only procees it to that point. For example:
 
 
 
@@ -261,3 +261,50 @@ Point 5) Adding pair type
 
 
 	c) Examples of pair evaluation comes as it follows:
+
+
+	>> p=(0,1);;
+
+		 p = ((0),(1)) : ((Nat),(Nat))
+
+
+	>> p2=("Hola",true);;
+
+	   p2 = (("Hola"),(true)) : ((Str),(Bool))
+
+  >> first p;;
+
+	   0 : Nat
+
+	 >> second p2;;
+
+	   true : Bool
+
+
+
+
+------------------------------------------------------------------------------------------------
+
+
+Point 6) Adding list type
+
+ a) The objective of this point is the inclusion of a list type, in a way that we would be able to create a ordered set of elements of the same type, simulating the
+    ocaml lists. Besides, we will also add utilities functions, such as head (get the first element of a list), tail (get all the list except the first element) and
+		isEmpty (check if the given list is empty or not). Finally, we will create two example functions in order to probe the correct functioning of this whole point.
+		A length function, which will return the number of elements that are inside a given list, and a map function, which will apply a certain given function to all the
+		elements of a given list
+
+	b) In order to reach this goal, the next modifications have been applied:
+
+		-lexer.mll: "LIST", "RCORCH", "LCORCH", "HEAD", "TAIL" and "ISEMPTY" tokens have been added in order to represent the proper list type plus the utilities functions
+
+		-parser.mly: TmHead, TmTail and TmIsEmpty have been added to the appTerm collection, as well as LCORH and RCORH to the atomicTerm collection. At last, we have also
+		added the type LIST to the ty set
+
+		-lambda.ml: TmList, TmHead, and TmTail added to term type set. TyList, TmList, TmHead, and TmTail, added to the different management evaluation (string_of_term, free_vars)
+		functions
+
+		-lambda.mli: Inclusion of TmList, TmHead, and TmTail in type term. List and EmptyList types added in type ty.
+
+
+ c) Examples of list evaluation are shown below:
