@@ -6,7 +6,6 @@ type ty =
   | TyArr of ty * ty
   | TyPair of ty * ty
   | TyList of ty
-  | TyEmptyList
   | TyRec of (string * ty) list
 ;;
 
@@ -22,7 +21,8 @@ type term =
   | TmPair of term * term
   | TmFirst of term
   | TmSecond of term
-  | TmList of term list
+  | TmList of term * term
+  | TmEmptyList of ty
   | TmHead of term
   | TmTail of term
   | TmIsEmpty of term
@@ -37,6 +37,7 @@ type term =
   | TmLetIn of string * term * term
   | TmFix of term
   | TmRec of (string * term) list
+  | TmProject of string * term
 ;;
 
 type variable =

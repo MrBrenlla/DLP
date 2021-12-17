@@ -308,3 +308,31 @@ Point 6) Adding list type
 
 
  c) Examples of list evaluation are shown below:
+
+
+
+
+
+
+
+
+
+---------------------------------------------------------------------------------------------
+
+Point 7) Adding sub-TYPING
+
+ a) The goal in this apart is the inclusion of subtypes in such away we will be able to allow polymorphism in records and functions in order to make comppatible some set of values that
+   they weren't before
+
+ b) To achieve this objective, the following changes have been applied to the code:
+
+
+
+
+
+
+
+
+
+
+ c) Here we have some examples of subtyping:

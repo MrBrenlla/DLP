@@ -23,12 +23,13 @@ rule token = parse
   | "Bool"      { BOOL }
   | "Nat"       { NAT }
   | "Str"       { STR }
+  | "List"      { LIST }
   | "first"     { FST }
   | "second"    { SCN }
-  | "list"      { LIST }
   | "head"      { HEAD }
   | "tail"      { TAIL }
   | "isempty"   { ISEMPTY }
+  | "project"   { PROJECT }
   | '('         { LPAREN }
   | ')'         { RPAREN }
   | '['         { LCORCH }

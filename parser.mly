@@ -20,6 +20,7 @@
 %token HEAD
 %token TAIL
 %token ISEMPTY
+%token PROJECT
 %token BOOL
 %token NAT
 %token STR
@@ -82,25 +83,29 @@ appTerm :
   | ISZERO atomicTerm
       { TmIsZero $2 }
   | CONCAT atomicTerm atomicTerm
-      {TmConcat ($2,$3)}
+      { TmConcat ($2,$3)}
   | TAIL atomicTerm
-      {TmTail $2}
+      { TmTail $2}
   | HEAD atomicTerm
-      {TmHead $2}
+      { TmHead $2}
   | ISEMPTY atomicTerm
-      {TmIsEmpty $2}
+      { TmIsEmpty $2}
   | appTerm atomicTerm
       { TmApp ($1, $2) }
+  | PROJECT STRINGV atomicTerm
+      { TmProject ($2,$3) }
 
 atomicTerm :
     LPAREN term RPAREN
       { $2 }
   | LPAREN term COMA term RPAREN
       { TmPair($2,$4) }
-  | LCORCH RCORCH
-      { TmList [] }
+  | LCORCH RCORCH COLON ty
+      { TmEmptyList $4 }
   | LCORCH term lista
-      { TmList ($2::$3) }
+      { TmList ($2,$3) }
+  | term COLON COLON term
+      { TmList ($1,$4) }
   | LBRAC RBRAC
       { TmRec [] }
   | LBRAC STRINGV EQ term reg
@@ -121,9 +126,9 @@ atomicTerm :
 
 lista :
     COMA term lista
-      {$2::$3}
-  | RCORCH
-      {[]}
+      {TmList ($2,$3)}
+  | RCORCH COLON ty
+      {TmEmptyList $3}
 
 reg :
     COMA STRINGV EQ term reg

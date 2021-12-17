@@ -1,6 +1,8 @@
 
 exception Type_error of string
 ;;
+exception Failure of string
+;;
 
 (* TYPE DEFINITIONS *)
 
@@ -11,7 +13,6 @@ type ty =
   | TyArr of ty * ty
   | TyPair of ty * ty
   | TyList of ty
-  | TyEmptyList
   | TyRec of (string * ty) list
 ;;
 
@@ -27,7 +28,8 @@ type term =
   | TmPair of term * term
   | TmFirst of term
   | TmSecond of term
-  | TmList of term list
+  | TmList of term * term
+  | TmEmptyList of ty
   | TmHead of term
   | TmTail of term
   | TmIsEmpty of term
@@ -42,6 +44,7 @@ type term =
   | TmLetIn of string * term * term
   | TmFix of term
   | TmRec of (string * term) list
+  | TmProject of string * term
 ;;
 
 type variable =
@@ -76,11 +79,9 @@ let rec string_of_ty ty = match ty with
   | TyArr (ty1, ty2) ->
       "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
   | TyPair (ty1,ty2)->
-      "(("^ string_of_ty ty1^"),("^ string_of_ty ty2 ^"))"
+      "("^ string_of_ty ty1^","^ string_of_ty ty2 ^")"
   | TyList ty1 ->
       "("^ string_of_ty ty1^" list)"
-  | TyEmptyList ->
-      "(empty list)"
   | TyRec l ->
       let aux (a,b) = a^":"^(string_of_ty b) in
       let ty' = String.concat "," (List.map aux l) in
@@ -88,7 +89,19 @@ let rec string_of_ty ty = match ty with
 ;;
 
 
+let rec rec_subtype l = function
+    (name,ty)::t ->  (try
+              let ty' = List.assoc name l in
+              if (ty=ty') then rec_subtype l t
+              else false
+              with
+              Not_found -> false)
+    |[]-> true
 
+
+let subtype t1 t2 = match t1,t2 with
+    (TyRec l1, TyRec l2) -> rec_subtype l1 l2
+    |_-> t1=t2
 
 
 let rec typeof ctx tm = match tm with
@@ -104,8 +117,10 @@ let rec typeof ctx tm = match tm with
   | TmIf (t1, t2, t3) ->
       if typeof ctx t1 = TyBool then
         let tyT2 = typeof ctx t2 in
-        if typeof ctx t3 = tyT2 then tyT2
-        else raise (Type_error "arms of conditional have different types")
+        let tyT3 = typeof ctx t3 in
+        if (subtype tyT2 tyT3) then tyT3
+        else if (subtype tyT3 tyT2) then tyT2
+            else raise (Type_error "arms of conditional have different types")
       else
         raise (Type_error "guard of conditional not a boolean")
 
@@ -128,31 +143,34 @@ let rec typeof ctx tm = match tm with
           TyPair(_,t2)->t2
           | _ -> raise (Type_error "argument of First is not a pair"))
 
-  | TmList []->
-      TyEmptyList
+  | TmEmptyList ty->
+      TyList ty
 
-  | TmList (h::_) ->
-      TyList(typeof ctx h)
+  | TmList(tm1,tm2) ->
+      let ty1' =   typeof ctx tm1
+      in
+      let ty2' =  typeof ctx tm2
+      in
+      if (TyList ty1' = ty2') then ty2'
+      else raise (Type_error (string_of_ty ty2'^" can't have a "^string_of_ty ty1'))
+
 
   |TmTail t ->
       let t'= typeof ctx t in
       (match t' with
             TyList ty -> TyList ty
-          | TyEmptyList -> raise (Type_error "Empty list has no tail")
           | _ -> raise (Type_error "argument of tail is not a list"))
 
   | TmHead t ->
       let t'= typeof ctx t in
         (match t' with
               TyList ty->ty
-            | TyEmptyList -> raise (Type_error "Empty list has no head")
             | _ -> raise (Type_error "argument of head is not a list"))
   | TmIsEmpty t ->
     let t'= typeof ctx t in
       (match t' with
             TyList _->TyBool
-          | TyEmptyList -> TyBool
-          | _ -> raise (Type_error "argument of head is not a list"))
+          | _ -> raise (Type_error "argument of isempty is not a list"))
 
   | TmString s->
       TyStr
@@ -195,7 +213,7 @@ let rec typeof ctx tm = match tm with
       let tyT2 = typeof ctx t2 in
       (match tyT1 with
            TyArr (tyT11, tyT12) ->
-             if tyT2 = tyT11 then tyT12
+             if (subtype tyT2 tyT11) then tyT12
              else raise (Type_error "parameter type mismatch")
          | _ -> raise (Type_error "arrow type expected"))
 
@@ -209,14 +227,23 @@ let rec typeof ctx tm = match tm with
     let tyT1 = typeof ctx t1 in
       (match tyT1 with
         TyArr (tyT11, tyT12) ->
-          if tyT11 = tyT12 then tyT12
+          if (subtype tyT12 tyT11) then tyT12
           else raise (Type_error "result of body not compatible with domain")
        | _ -> raise (Type_error "arrow type expected"))
 
   | TmRec l ->
       let aux (a,b) = (a,typeof ctx b) in
       TyRec ( List.map aux l )
+  | TmProject (name,t) ->
+      let ty'= typeof ctx t in
+      (match ty' with
+        TyRec l ->(try
+                    List.assoc name l
+                  with
+                    Not_found->raise (Type_error "projection not valid for this record"))
+        |_ -> raise (Type_error "second argument of projection is not a record"))
 ;;
+
 
 
 
@@ -247,7 +274,7 @@ let rec string_of_term = function
       "iszero " ^ "(" ^ string_of_term t ^ ")"
 
   | TmPair(t1,t2)->
-        "(("^ string_of_term t1^"),("^ string_of_term t2 ^"))"
+        "("^ string_of_term t1^","^ string_of_term t2 ^")"
 
   | TmConcat (t1,t2) ->
       "concat"^"(" ^ string_of_term t1 ^ ") ("^string_of_term t2 ^ ")"
@@ -258,16 +285,20 @@ let rec string_of_term = function
   | TmSecond (t1) ->
       "second" ^ "(" ^ (string_of_term t1) ^ ")"
 
-  | TmList []->
-      "[]"
+  | TmEmptyList ty->
+      "[]:"^string_of_ty ty
 
-  | TmList (h::t) ->
+  | TmList (h,TmList (a,b)) ->
       let rec string_of_list = function
-            h::t -> ","^string_of_term h ^ string_of_list t
-          | []-> ""
+            TmList(h,t) -> ","^string_of_term h ^ string_of_list t
+          | TmEmptyList ty-> "]:"^string_of_ty ty
+          | t -> raise (Failure ("Malformed list construnction using "^string_of_term(t)))
       in
-      "["^ string_of_term h^ string_of_list t ^"]"
-
+      "["^ string_of_term h^ string_of_list (TmList (a,b))
+  | TmList (h,TmEmptyList ty) ->
+      "["^string_of_term h^"]:"^string_of_ty ty
+  | TmList (h,t) ->
+      "("^string_of_term h^"::"^string_of_term t^")"
   | TmHead(t1) ->
       "head" ^ "(" ^ (string_of_term t1) ^ ")"
 
@@ -293,6 +324,8 @@ let rec string_of_term = function
       let aux (a,b) = a^"="^(string_of_term b) in
       let tm' = String.concat "," (List.map aux l) in
       "{"^tm'^"}"
+  | TmProject (name,t) ->
+      "(project "^name^" "^string_of_term t^")"
 ;;
 
 let rec ldif l1 l2 = match l1 with
@@ -330,8 +363,10 @@ let rec free_vars tm = match tm with
       free_vars t
   | TmSecond t->
       free_vars t
-  | TmList t ->
-      List.fold_left lunion [] (List.map free_vars t)
+  | TmEmptyList _ ->
+      []
+  | TmList (t1,t2) ->
+    lunion (free_vars t1) (free_vars t2)
   | TmHead t->
       free_vars t
   | TmTail t->
@@ -351,6 +386,8 @@ let rec free_vars tm = match tm with
   | TmRec l ->
       let aux(a,b)= free_vars b in
       List.fold_left lunion [] (List.map aux l)
+  | TmProject (_,t)->
+      free_vars t
 ;;
 
 let rec fresh_name x l =
@@ -382,8 +419,10 @@ let rec subst x s tm = match tm with
       TmFirst (subst x s t)
   | TmSecond t ->
       TmSecond (subst x s t)
-  | TmList t ->
-      TmList(List.map (subst x s) t)
+  |TmEmptyList t->
+      TmEmptyList t
+  | TmList (t1,t2) ->
+      TmList( (subst x s t1) ,(subst x s t2))
   | TmHead t ->
       TmHead (subst x s t)
   | TmTail t ->
@@ -413,6 +452,8 @@ let rec subst x s tm = match tm with
   | TmRec l ->
       let aux(a,b)=(a,subst x s b) in
       TmRec (List.map aux l)
+  | TmProject (name,t)->
+      TmProject(name,subst x s t)
 ;;
 
 let rec isnumericval tm = match tm with
@@ -428,6 +469,7 @@ let rec isval tm = match tm with
   | TmString _ -> true
   | TmPair (_,_) -> true
   | TmList _ -> true
+  | TmEmptyList _ -> true
   | TmRec _ -> true
   | t when isnumericval t -> true
   | _ -> false
@@ -435,6 +477,8 @@ let rec isval tm = match tm with
 
 exception NoRuleApplies
 ;;
+
+
 
 let rec eval1 tm = match tm with
     (* E-IfTrue *)
@@ -496,7 +540,7 @@ let rec eval1 tm = match tm with
       TmConcat(eval1 t1, eval1 t2)
 
   |TmFirst(TmPair(t1,_)) ->
-    t1
+      t1
 
   |TmFirst t ->
       TmFirst (eval1 t)
@@ -507,25 +551,31 @@ let rec eval1 tm = match tm with
   |TmSecond t ->
       TmSecond(eval1 t)
 
-  | TmList (h::t) ->
-      TmList(List.map eval1 (h::t))
+  |TmList (t1,t2) ->
+      if (isval t1) then TmList(t1, eval1 t2)
+      else TmList(eval1 t1, t2)
 
-  |TmHead(TmList(h::_)) ->
+  |TmHead(TmList(h,_)) when isval h ->
       h
+
+  |TmHead(TmEmptyList _)->
+      raise (Failure "EmptyList has no head")
 
   |TmHead t ->
       TmHead (eval1 t)
 
-  |TmTail(TmList(_::t)) ->
-        TmList(t)
+  |TmTail(TmList(_,t)) when isval t ->
+        t
 
+  |TmTail(TmEmptyList _)->
+      raise (Failure "EmptyList has no tail")
 
   |TmTail t ->
         TmTail (eval1 t)
 
   |TmIsEmpty t -> (match t with
-        TmList [] -> TmTrue
-        |TmList _ -> TmFalse
+        TmList _ -> TmFalse
+        |TmEmptyList _ -> TmTrue
         | _-> TmIsEmpty (eval1 t))
 
     (* E-AppAbs *)
@@ -563,6 +613,10 @@ let rec eval1 tm = match tm with
   |TmRec (h::t) ->
       let aux (a,b)= (a,eval1 b) in
       TmRec(List.map aux (h::t))
+
+  |TmProject (name,TmRec(l))->
+      List.assoc name l
+
 
   | _ ->
       raise NoRuleApplies

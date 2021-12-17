@@ -22,16 +22,26 @@ let fix = lambda f.(lambda x. f (lambda y. x x y)) (lambda x. f (lambda y. x x y
 
 letrec zero : Nat -> Nat = lambda n : Nat. if iszero n then n else (zero (pred n)) in zero 100;;
 
-fib = letrec sum : Nat -> Nat -> Nat = lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m) in
-(letrec fib: Nat-> Nat = Ln:Nat. if (iszero n) then (0) else (if (iszero (pred n)) then 1 else (sum (fib (pred(n))) (fib (pred(pred(n)))))) in Lx:Nat.fib x);;                                )
+fib = letrec sum : Nat -> Nat -> Nat = lambda n : Nat. lambda m : Nat. if iszero n then m else succ ((sum (pred n)) m) in
+(letrec fib: Nat-> Nat = Ln:Nat. if (iszero n) then (0) else (if (iszero (pred n)) then 1 else ((sum (fib (pred(n)))) (fib (pred(pred(n)))))) in Lx:Nat.fib x);;
+
+mult = letrec sum : Nat -> Nat -> Nat = lambda n : Nat. lambda m : Nat. if iszero n then m else succ ((sum (pred n)) m) in
+letrec mult : Nat -> Nat -> Nat = lambda n: Nat. lambda m:Nat. if iszero n then 0 else (sum m) ((mult (pred n)) m) in Lx:Nat.Ly:Nat.(mult x) y;;
 
 
-mult = (letrec sum : Nat -> Nat -> Nat = lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m) in
-letrec mult : Nat -> Nat -> Nat = lambda n: Nat. lambda m:Nat. if iszero n then 0 else sum m (mult (pred n) m) in Lx:Nat.Ly:Nat.mult x y);;
+sum = letrec auxsum : Nat -> Nat -> Nat =
+lambda n : Nat. lambda m : Nat. if (iszero n) then (m) else (succ ((auxsum (pred n)) m)) in
+L x:Nat. L y:Nat. (auxsum x) y;;
 
 
-length = letrec sum : List -> Nat -> Nat = lambda l : List. lambda aux : Nat. if (isempty l) then aux else sum (tail l) (Succ aux) in
-L length: List -> Nat. Lambda l: List. sum l 0;;
 
-map = letrec app: List -> ____ -> List -> List = lambda l : List. lambda f : _. Lambda res : List if (isEmpty l) then res else app (tail l) f (f (head l)::res) in
-L map = List -> ____ -> List: Lambda l : List. lambda f : _. app l f []
+length = letrec auxlength : (Nat List) -> Nat = L l:Nat List. if (isempty l) then 0 else (sum 1) (auxlength (tail l))
+in auxlength;;
+
+length [1,2,3,4,5,6]:Nat;;
+
+
+map = letrec auxmap: (Nat -> Nat) -> (Nat List) -> (Nat List) = L f: Nat -> Nat.L l:Nat List. if (isempty l) then (l) else ((f (head l))::((auxmap f)(tail l))) in
+L f:Nat -> Nat. L lista: Nat List. (auxmap f) lista;;
+
+(map (sum 1))[1,2,3,4]:Nat;;

@@ -16,6 +16,7 @@ type token =
   | HEAD
   | TAIL
   | ISEMPTY
+  | PROJECT
   | BOOL
   | NAT
   | STR

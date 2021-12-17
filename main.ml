@@ -9,7 +9,7 @@ open Lexer;;
 let top_level_loop () =
   print_endline "Evaluator of lambda expressions...";
   let rec loop ctx vars=
-    print_string ">> ";
+    print_string "\n>> ";
     flush stdout;
     try
       let rec read ()=
@@ -28,11 +28,11 @@ let top_level_loop () =
           print_newline ();
           let tyTm = typeof ctx tm in
           let ctx' = addbinding ctx name tyTm in
-          print_endline ("  "^name^" = "^string_of_term (tm') ^ " : " ^ string_of_ty tyTm^"\n");
+          print_endline ("  "^name^" = "^string_of_term (tm') ^ " : " ^ string_of_ty tyTm);
           loop ctx' ((name,tm')::vars)
         | VarValue tm ->
           print_newline ();let tyTm = typeof ctx tm in
-          print_endline ("  "^string_of_term (eval tm vars) ^ " : " ^ string_of_ty tyTm^"\n");
+          print_endline ("  "^string_of_term (eval tm vars) ^ " : " ^ string_of_ty tyTm);
           loop ctx vars
     with
        Lexical_error ->
@@ -43,6 +43,9 @@ let top_level_loop () =
          loop ctx vars
      | Type_error e ->
          print_endline ("type error: " ^ e);
+         loop ctx vars
+     | Failure e->
+         print_endline ("Failure: " ^ e);
          loop ctx vars
      | End_of_file ->
          print_endline "...bye!!!"
