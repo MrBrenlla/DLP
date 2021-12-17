@@ -610,9 +610,13 @@ let rec eval1 tm = match tm with
       let t1'= eval1 t1 in
       TmFix t1'
 
-  |TmRec (h::t) ->
-      let aux (a,b)= (a,eval1 b) in
-      TmRec(List.map aux (h::t))
+  |TmRec (l) ->
+      let rec aux= function
+        (a,b)::t -> if (isval b) then (a,b)::(aux t)
+                    else (a,eval1 b)::t
+        |[]-> raise NoRuleApplies
+      in
+      TmRec (aux l)
 
   |TmProject (name,TmRec(l))->
       List.assoc name l

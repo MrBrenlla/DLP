@@ -289,10 +289,11 @@ Point 5) Adding pair type
 Point 6) Adding list type
 
  a) The objective of this point is the inclusion of a list type, in a way that we would be able to create a ordered set of elements of the same type, simulating the
-    ocaml lists. Besides, we will also add utilities functions, such as head (get the first element of a list), tail (get all the list except the first element) and
-		isEmpty (check if the given list is empty or not). Finally, we will create two example functions in order to probe the correct functioning of this whole point.
-		A length function, which will return the number of elements that are inside a given list, and a map function, which will apply a certain given function to all the
-		elements of a given list
+    ocaml lists they could be written inside "[]" ean separated with "," or conect a head and it's tail with "::". Also we will need to add a ":" followed by the
+		type that the elements are going to have for avoiding problems with the empty list. Besides, we will also add utilities functions, such as head (get the first
+		element of a list), tail (get all the list except the first element) andisEmpty (check if the given list is empty or not). Finally, we will create two example
+		functions in order to probe the correct functioning of this whole point.A length function, which will return the number of elements that are inside a given list,
+		and a map function, which will apply a certain given function to all the elements of a given list
 
 	b) In order to reach this goal, the next modifications have been applied:
 
@@ -301,38 +302,138 @@ Point 6) Adding list type
 		-parser.mly: TmHead, TmTail and TmIsEmpty have been added to the appTerm collection, as well as LCORH and RCORH to the atomicTerm collection. At last, we have also
 		added the type LIST to the ty set
 
-		-lambda.ml: TmList, TmHead, and TmTail added to term type set. TyList, TmList, TmHead, and TmTail, added to the different management evaluation (string_of_term, free_vars)
+		-lambda.ml: TmList, TmHead, TmTail and TmIsEmpty added to term type set. TyList, TmList, TmHead,  TmTail and TmIsEmpty added to the different management evaluation (string_of_term, free_vars)
 		functions
 
-		-lambda.mli: Inclusion of TmList, TmHead, and TmTail in type term. List and EmptyList types added in type ty.
+		-lambda.mli: Inclusion of TmList, TmHead, TmTail and TmIsEmpty in type term. List and EmptyList types added in type ty.
 
 
  c) Examples of list evaluation are shown below:
 
 
+		 >> x=[1,2,3]:Nat;;
 
+				x = [1,2,3]:Nat : (Nat list)
 
+			>> s="a"::["b"]:Str;;
 
+				s = ["a","b"]:Str : (Str list)
 
+			>> tail x;;
+
+			  [2,3]:Nat : (Nat list)
+
+			>> head x;;
+
+			  1 : Nat
+
+			>> (head x)::(tail x);;
+
+			  [1,2,3]:Nat : (Nat list)
+
+			>> isempty x;;
+
+			  false : Bool
+
+			>> isempty []:Bool;;
+
+			  true : Bool
 
 
 
 ---------------------------------------------------------------------------------------------
 
-Point 7) Adding sub-TYPING
+Point 7) Adding records
+
+	a) Our objective in this point is the inclusion of record fields. We will try to introduce records themselves, as well as the project function, which will allow us to get a certain value of one of
+	the elements of the selected record
+
+
+	b) To reach this objective, the next features have been applied:
+
+	-lexer.mll:  "RBRAC", "LBRAC", and "PROJECT" tokens have been added in order to represent the proper record type plus the utilities functions
+
+	-parser.mly: TmProject have been added to the appTerm collection, as well as LBRAC and RBRAC notation to the atomicTerm and ty collections.
+
+	-lambda.ml: TmRec and TmProject added to term type set. TyRec added to the different management evaluation (string_of_term, free_vars)
+	functions
+
+	-lambda.mli: Inclusion of TmRec and TmProject in type term. TyRec type added in type ty.
+
+
+	c) Some examples of records use:
+
+
+
+	>> reg={a=1,b="string",c=true,f=Lx:Nat.succ x};;
+
+	  	reg = {a=1,b="string",c=true,f=(lambda x:Nat. succ (x))} : {a:Nat,b:Str,c:Bool,f:(Nat) -> (Nat)}
+
+	>> project a reg;;
+
+	  	1 : Nat
+
+	>> project f reg;;
+
+		 (lambda x:Nat. succ (x)) : (Nat) -> (Nat)
+
+	>> (project f reg) 3;;
+
+	  	4 : Nat
+
+
+
+---------------------------------------------------------------------------------------
+
+Point 8) Adding sub-TYPING
 
  a) The goal in this apart is the inclusion of subtypes in such away we will be able to allow polymorphism in records and functions in order to make comppatible some set of values that
    they weren't before
 
  b) To achieve this objective, the following changes have been applied to the code:
 
+	-lambda.ml: We created a new pair of functions:
 
 
+	let rec rec_subtype l = function
+			(name,ty)::t ->  (try
+								let ty' = List.assoc name l in
+								if (ty=ty') then rec_subtype l t
+								else false
+								with
+								Not_found -> false)
+			|[]-> true
 
 
+	let subtype t1 t2 = match t1,t2 with
+			(TyRec l1, TyRec l2) -> rec_subtype l1 l2
+			|_-> t1=t2
 
+	Which allow us to analyze the type of the given parameters, in order to see if they match either for a direct equivalent (they bouth have the same type), either because of
+	one of them include the other.
 
 
 
 
  c) Here we have some examples of subtyping:
+
+
+				 >> f= L x:{a:Nat}.x;;
+
+				   f = (lambda x:{a:Nat}. x) : ({a:Nat}) -> ({a:Nat})
+
+				 >> f {a=1,b="b"};;
+
+				   {a=1,b="b"} : {a:Nat}
+
+				>> letrec g:({a:Nat})->{a:Nat,b:Nat} = Lx:{a:Nat}. if (iszero (project a x)) then {a=(project a x),b=(project a x)} else (g {a=pred(project a x),b=(project a x)}) in g {a=3};;
+
+					 {a=0,b=0} : {a:Nat,b:Nat}
+
+				>> if true then {} else {a=1};;
+
+				  {} : {}
+
+				>> if false then {} else {a=1};;
+
+				  {a=1} : {}
