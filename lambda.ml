@@ -79,9 +79,9 @@ let rec string_of_ty ty = match ty with
   | TyArr (ty1, ty2) ->
       "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
   | TyPair (ty1,ty2)->
-      "("^ string_of_ty ty1^","^ string_of_ty ty2 ^")"
+      string_of_ty ty1^"*"^ string_of_ty ty2
   | TyList ty1 ->
-      "("^ string_of_ty ty1^" list)"
+       string_of_ty ty1^" list"
   | TyRec l ->
       let aux (a,b) = a^":"^(string_of_ty b) in
       let ty' = String.concat "," (List.map aux l) in
@@ -99,8 +99,11 @@ let rec rec_subtype l = function
     |[]-> true
 
 
-let subtype t1 t2 = match t1,t2 with
+
+let rec subtype t1 t2 =
+    match t1,t2 with
     (TyRec l1, TyRec l2) -> rec_subtype l1 l2
+    |TyArr(t11,t12),TyArr(t21,t22)-> (subtype t11 t21) && (subtype t22 t12)
     |_-> t1=t2
 
 
@@ -524,8 +527,11 @@ let rec eval1 tm = match tm with
       let t1' = eval1 t1 in
       TmIsZero t1'
 
-  |TmPair(t1,t2)->
+  |TmPair(t1,t2) when isval t1->
       TmPair(eval1 t1, eval1 t2)
+
+  |TmPair(t1,t2)->
+      TmPair(eval1 t1, t2)
 
   |TmConcat (TmString t1, TmString t2)->
       TmString(t1^t2)
@@ -619,8 +625,13 @@ let rec eval1 tm = match tm with
       TmRec (aux l)
 
   |TmProject (name,TmRec(l))->
+      (try
       List.assoc name l
+      with
+      Not_found-> raise (Failure "This register doesn't have that value"))
 
+  |TmProject (name,t)->
+      TmProject(name,eval1 t)
 
   | _ ->
       raise NoRuleApplies
