@@ -103,7 +103,7 @@ let rec rec_subtype l = function
 let rec subtype t1 t2 =
     match t1,t2 with
     (TyRec l1, TyRec l2) -> rec_subtype l1 l2
-    |TyArr(t11,t12),TyArr(t21,t22)-> (subtype t11 t21) && (subtype t22 t12)
+    |TyArr(t11,t12),TyArr(t21,t22)-> (subtype t21 t11) && (subtype t12 t22)
     |_-> t1=t2
 
 
@@ -528,7 +528,7 @@ let rec eval1 tm = match tm with
       TmIsZero t1'
 
   |TmPair(t1,t2) when isval t1->
-      TmPair(eval1 t1, eval1 t2)
+      TmPair(t1, eval1 t2)
 
   |TmPair(t1,t2)->
       TmPair(eval1 t1, t2)
